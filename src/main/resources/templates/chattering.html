@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+        <head>
+        <title>WebSocket Chat</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+        <style>
+         .chat-container {
+             width: 600px;
+             margin: 30px auto;
+        #messageArea{
+            height: 400px;
+            border: 1px solid #ccc;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+        .message {
+            margin: 5px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .join {
+            color: green;
+            font-style: italic;
+        }
+        .leave {
+            color: red;
+            font-style: italic;
+        }
+        .chat {
+            background-color: #f0f0f0;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #message {
+            flex-grow: 1;
+            padding: 5px;
+        }
+         }
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div id="messageArea"></div>
+    <div class="input-area">
+        <input type="text" id="sender" placeholder="Your Name" />
+        <input type="text" id="message" placeholder="Type a message..." />
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    let stompClient = null;
+    const messageArea = document.getElementById('messageArea');
+    // stompClient는 STOMP 프로토콜을 사용하기 위한 클라이언트 객체를 저장할 변수
+    // messageArea는 메시지를 표시할 HTML 영역을 가져옴
+
+    function connect() {
+        const socket = new SockJS('/ws');
+        // SockJS 객체 생성: 서버와 WebSocket을 통해 연결을 설정하기 위한 엔드포인트 지정
+        stompClient = Stomp.over(socket);
+        // Stomp 클라이언트 객체를 WebSocket 위에 생성
+
+        stompClient.connect({}, function(frame) {
+            console.log('Connected: ' + frame);
+            // WebSocket 연결이 성공적으로 이루어진 경우 호출되는 콜백 함수
+            // frame은 연결 정보를 포함
+
+            sendJoinMessage();
+            // 연결 직후 참가 메시지를 전송하여 사용자 입장을 알림
+
+            stompClient.subscribe('/topic/messages', function(message) {
+                showMessage(JSON.parse(message.body));
+            });
+            // 서버의 특정 메시지 브로드캐스트 대상(/topic/messages)을 구독
+            // 서버에서 전달받은 메시지를 JSON으로 파싱 후 showMessage로 처리
+        });
+    }
+
+    function sendJoinMessage() {
+        const sender = document.getElementById('sender').value.trim();
+        // sender 입력 필드에서 사용자 이름을 가져옴
+        if (sender) {
+            const message = {
+                sender: sender,
+                type: 'JOIN',
+                content: sender + ' joined the chat'
+            };
+            // JOIN 타입 메시지 생성: 사용자가 채팅에 참여했음을 알림
+            stompClient.send("/app/chat", {}, JSON.stringify(message));
+            // 서버로 메시지를 전송 (/app/chat 경로)
+        }
+    }
+
+    function sendMessage() {
+        const messageInput = document.getElementById('message');
+        const senderInput = document.getElementById('sender');
+        const content = messageInput.value.trim();
+        const sender = senderInput.value.trim();
+        // 입력 필드에서 메시지와 사용자 이름을 가져옴
+
+        if (content && sender && stompClient) {
+            const message = {
+                content: content,
+                sender: sender,
+                type: 'CHAT'
+            };
+            // CHAT 타입 메시지 생성: 사용자 메시지를 전달
+            stompClient.send("/app/chat", {}, JSON.stringify(message));
+            // 서버로 메시지를 전송
+            messageInput.value = '';
+            // 메시지 입력 필드 초기화
+        }
+    }
+
+    function showMessage(message) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', message.type.toLowerCase());
+        // 새 메시지를 위한 div 요소 생성 및 메시지 유형(JOIN, LEAVE, CHAT)에 따른 클래스 추가
+
+        let messageContent = '';
+        switch(message.type) {
+            case 'JOIN':
+                messageContent = `${message.content}`;
+                break;
+            case 'LEAVE':
+                messageContent = `${message.content}`;
+                break;
+            case 'CHAT':
+                messageContent = `${message.sender}: ${message.content}`;
+                break;
+        }
+        // 메시지 타입에 따라 표시할 내용 설정
+
+        messageElement.textContent = messageContent;
+        // 메시지 내용을 div 요소에 추가
+        messageArea.appendChild(messageElement);
+        // 메시지 영역에 메시지 요소 추가
+        messageArea.scrollTop = messageArea.scrollHeight;
+        // 메시지 영역을 항상 최신 메시지로 스크롤
+    }
+
+    document.getElementById('message').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+    // 메시지 입력 필드에서 Enter 키를 눌렀을 때 sendMessage 호출
+
+    window.onload = function() {
+        connect();
+    };
+    // 페이지 로드 시 connect 함수 호출로 WebSocket 연결 시작
+
+    window.onbeforeunload = function() {
+        if (stompClient) {
+            const sender = document.getElementById('sender').value.trim();
+            if (sender) {
+                const message = {
+                    sender: sender,
+                    type: 'LEAVE',
+                    content: sender + ' left the chat'
+                };
+                stompClient.send("/app/chat", {}, JSON.stringify(message));
+                // LEAVE 메시지를 서버에 전송하여 사용자가 채팅을 떠났음을 알림
+            }
+            stompClient.disconnect();
+            // WebSocket 연결 해제
+        }
+    };
+    // 페이지를 닫기 직전에 연결을 끊고 LEAVE 메시지를 전송
+</script>
+</body>
+</html>

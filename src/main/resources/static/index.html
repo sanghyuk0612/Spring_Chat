@@ -1,34 +1,29 @@
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>WebSocket Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Form</title>
+
 </head>
 <body>
-<div>
-    <input type="text" id="message" placeholder="Type a message..."/>
-    <button onclick="sendMessage()">Send</button>
+<div class="container">
+    <form id="signupForm" action="/signup" method="post" class="login-form">
+        <h2 class="form-title">로그인</h2>
+        <div class="form-group">
+            <input type="text" id="username" name="username" placeholder="아이디" required>
+        </div>
+        <div class="form-group">
+            <input type="password" id="password" name="password" placeholder="비밀번호" required>
+        </div>
+        <div class="button-group">
+            <button id="login_button" type="submit" formaction="/login">로그인</button>
+            <button id="signupButton" type="submit" class="signup-button">회원가입</button>
+        </div>
+    </form>
 </div>
-<div id="chat">
-    <h3>Chat Messages</h3>
-</div>
-
-<script>
-    let socket = new WebSocket("ws://localhost:8080/chat");
-
-    socket.onmessage = function(event) {
-        let chat = document.getElementById("chat");
-        let message = document.createElement("p");
-        message.textContent = event.data;
-        chat.appendChild(message); // 채팅 메시지를 화면에 추가
-    };
-
-    function sendMessage() {
-        let messageInput = document.getElementById("message");
-        let message = messageInput.value;
-        socket.send(message); // 웹소켓을 통해 메시지 전송
-        messageInput.value = ""; // 메시지 입력란 초기화
-    }
-</script>
+<script src="js/signup.js"></script>
 </body>
 </html>
