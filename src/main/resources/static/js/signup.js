@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 alert(data.message); // 서버 응답 메시지 표시
                 if (data.message === "로그인 성공") {
+                    localStorage.setItem("currentUser",username);
                     window.location.href = '/chat'; // 로그인 성공 시 리다이렉트
                 }
             })

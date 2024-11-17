@@ -97,6 +97,7 @@ public class LoginController {
         User newUser = new User();
         newUser.setUsername(username)
                 .setPassword(password);
+
         userRepository.save(newUser);
 
         return ResponseEntity.ok(new ResponseMessage("회원가입 성공", HttpStatus.OK));
